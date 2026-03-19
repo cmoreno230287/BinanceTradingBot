@@ -1,0 +1,18 @@
+{
+  "id": "strategy-1-btc-sweep-conservative",
+  "name": "BTCUSDT Liquidity Sweep Conservative",
+  "symbol": "BTCUSDT",
+  "contextInterval": "15m",
+  "executionInterval": "5m",
+  "entryInterval": "1m",
+  "candlesLimit": 150,
+  "sweepLookback": 20,
+  "structureLookback": 10,
+  "minimumRiskReward": 2.5,
+  "maxStopLossPercent": 0.45,
+  "maxEntryDistancePercent": 0.12,
+  "minimumDisplacementPercent": 0.12,
+  "liquidityTargetLookback": 60,
+  "defaultQuantity": 0.0001,
+  "sessions": ["LONDON", "NEW_YORK"]
+}

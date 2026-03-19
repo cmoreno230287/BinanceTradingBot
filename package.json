@@ -1,0 +1,24 @@
+{
+  "name": "binance-trading-bot-v2",
+  "version": "1.0.0",
+  "description": "TypeScript trading bot for BTCUSDT analysis and Binance order execution via Binance Integration CLI.",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "npx tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "analyze": "npm run build && npm run start",
+    "watch": "npm run build && node dist/index.js"
+  },
+  "keywords": [
+    "binance",
+    "trading-bot",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.3"
+  }
+}
