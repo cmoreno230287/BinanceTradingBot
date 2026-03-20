@@ -2,10 +2,12 @@ import { AppConfig } from '../config/app-config';
 import { BinanceCliOrderExecutor } from '../infra/binance/binance-cli-order-executor';
 import { BinanceMarketDataClient } from '../infra/binance/binance-market-data-client';
 import { BotLogger } from '../infra/fs/bot-logger';
+import { TradePerformanceStore } from '../infra/fs/trade-performance-store';
 import { StrategyLoader } from '../infra/fs/strategy-loader';
 import { TradeJournal } from '../infra/fs/trade-journal';
 import { OrderGuardService } from './order-guard-service';
 import { PositionSizingService } from './position-sizing-service';
+import { TradeOutcomeService } from './trade-outcome-service';
 import { SmcLiquiditySweepStrategy } from '../strategies/smc-liquidity-sweep-strategy';
 
 interface TradingBotServiceDependencies {
@@ -16,6 +18,7 @@ interface TradingBotServiceDependencies {
   orderExecutor: BinanceCliOrderExecutor;
   positionSizingService: PositionSizingService;
   orderGuardService: OrderGuardService;
+  tradeOutcomeService: TradeOutcomeService;
   logger: BotLogger;
 }
 
@@ -23,7 +26,17 @@ export class TradingBotService {
   public constructor(private readonly dependencies: TradingBotServiceDependencies) {}
 
   public async runOnce(): Promise<Record<string, unknown>> {
-    const { config, marketDataClient, strategyLoader, tradeJournal, orderExecutor, positionSizingService, orderGuardService, logger } = this.dependencies;
+    const {
+      config,
+      marketDataClient,
+      strategyLoader,
+      tradeJournal,
+      orderExecutor,
+      positionSizingService,
+      orderGuardService,
+      tradeOutcomeService,
+      logger
+    } = this.dependencies;
     const strategyDefinition = strategyLoader.loadById(config.strategyId);
     const now = new Date();
 
@@ -34,6 +47,11 @@ export class TradingBotService {
     ]);
 
     const strategy = new SmcLiquiditySweepStrategy();
+    const closedTrades = tradeOutcomeService.reconcileOpenTrades(config.binanceSymbol, entryCandles, now);
+    if (closedTrades.length > 0) {
+      logger.info('Open test trades reconciled to final outcomes.', closedTrades);
+    }
+
     const analysis = strategy.analyze({
       strategy: strategyDefinition,
       contextCandles,
@@ -116,6 +134,25 @@ export class TradingBotService {
       riskRewardRatio: analysis.setup.riskRewardRatio,
       result: config.useTestOrders ? 'TestValidated' : 'Submitted'
     }, now);
+
+    if (config.useTestOrders) {
+      tradeOutcomeService.registerOpenTrade({
+        setupId: analysis.setup.setupId,
+        bracketId,
+        strategyId: strategyDefinition.id,
+        symbol: analysis.setup.symbol,
+        session: analysis.session,
+        direction: analysis.setup.direction,
+        entryPrice: analysis.setup.entryPrice,
+        stopLossPrice: analysis.setup.stopLossPrice,
+        takeProfitPrice: analysis.setup.takeProfitPrice,
+        riskRewardRatio: analysis.setup.riskRewardRatio,
+        executionMode: 'TEST',
+        openedAtIso: now.toISOString(),
+        outcomeStatus: 'OPEN'
+      });
+    }
+
     orderGuardService.markOrderSubmitted(analysis.setup, bracketId, now);
     logger.info('Order submitted through Binance CLI.', {
       setupId: analysis.setup.setupId,
@@ -127,6 +164,7 @@ export class TradingBotService {
     return {
       botName: config.botName,
       analysis,
+      closedTrades,
       positionSizing,
       bracketId,
       order: executionResult

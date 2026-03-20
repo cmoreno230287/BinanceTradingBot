@@ -5,11 +5,13 @@ const binance_cli_order_executor_1 = require("./infra/binance/binance-cli-order-
 const binance_market_data_client_1 = require("./infra/binance/binance-market-data-client");
 const bot_logger_1 = require("./infra/fs/bot-logger");
 const bot_state_store_1 = require("./infra/fs/bot-state-store");
+const trade_performance_store_1 = require("./infra/fs/trade-performance-store");
 const strategy_loader_1 = require("./infra/fs/strategy-loader");
 const trade_journal_1 = require("./infra/fs/trade-journal");
 const bot_runner_1 = require("./services/bot-runner");
 const order_guard_service_1 = require("./services/order-guard-service");
 const position_sizing_service_1 = require("./services/position-sizing-service");
+const trade_outcome_service_1 = require("./services/trade-outcome-service");
 const trading_bot_service_1 = require("./services/trading-bot-service");
 async function main() {
     const config = (0, app_config_1.loadAppConfig)();
@@ -21,6 +23,8 @@ async function main() {
     const stateStore = new bot_state_store_1.BotStateStore(config.stateDirectoryPath);
     const logger = new bot_logger_1.BotLogger(config.logsDirectoryPath);
     const orderGuardService = new order_guard_service_1.OrderGuardService(stateStore, tradeJournal);
+    const tradePerformanceStore = new trade_performance_store_1.TradePerformanceStore(config.stateDirectoryPath, config.reportsDirectoryPath);
+    const tradeOutcomeService = new trade_outcome_service_1.TradeOutcomeService(tradePerformanceStore);
     const service = new trading_bot_service_1.TradingBotService({
         config,
         marketDataClient,
@@ -29,6 +33,7 @@ async function main() {
         orderExecutor,
         positionSizingService,
         orderGuardService,
+        tradeOutcomeService,
         logger
     });
     const runner = new bot_runner_1.BotRunner(service, config.analysisIntervalSeconds, logger);

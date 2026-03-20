@@ -20,6 +20,7 @@ function loadAppConfig() {
         strategiesDirectoryPath: node_path_1.default.join(projectRootPath, 'strategies'),
         stateDirectoryPath: node_path_1.default.join(projectRootPath, 'state'),
         logsDirectoryPath: node_path_1.default.join(projectRootPath, 'logs'),
+        reportsDirectoryPath: node_path_1.default.join(projectRootPath, 'reports'),
         riskPercent: getNumber(env, 'RISK_PERCENT', 1),
         accountBalanceUsd: getNumber(env, 'ACCOUNT_BALANCE_USD', 1000),
         defaultQuantity: getNumber(env, 'DEFAULT_QUANTITY', 0.0001),

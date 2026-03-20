@@ -11,6 +11,7 @@ export interface AppConfig {
   strategiesDirectoryPath: string;
   stateDirectoryPath: string;
   logsDirectoryPath: string;
+  reportsDirectoryPath: string;
   riskPercent: number;
   accountBalanceUsd: number;
   defaultQuantity: number;
@@ -46,6 +47,7 @@ export function loadAppConfig(): AppConfig {
     strategiesDirectoryPath: path.join(projectRootPath, 'strategies'),
     stateDirectoryPath: path.join(projectRootPath, 'state'),
     logsDirectoryPath: path.join(projectRootPath, 'logs'),
+    reportsDirectoryPath: path.join(projectRootPath, 'reports'),
     riskPercent: getNumber(env, 'RISK_PERCENT', 1),
     accountBalanceUsd: getNumber(env, 'ACCOUNT_BALANCE_USD', 1000),
     defaultQuantity: getNumber(env, 'DEFAULT_QUANTITY', 0.0001),

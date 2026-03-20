@@ -216,6 +216,22 @@ Ejemplo de archivo mensual:
 
 - `Trades_Mar2026.csv`
 
+### Reporte de Rendimiento En Modo Test
+
+Los resultados finales simulados para trades en modo test se guardan en:
+
+`C:\Projects\BinanceTradingBot_V2\reports\trade-performance-report.csv`
+
+Los trades simulados abiertos se guardan en:
+
+`C:\Projects\BinanceTradingBot_V2\state\open-trades.json`
+
+En cada ciclo el bot vuelve a evaluar esos trades usando velas nuevas del timeframe de entrada y los cierra como:
+
+- `TP`
+- `SL`
+- o los mantiene en `OPEN`
+
 ## 10. Secuencia Recomendada de Ejecucion
 
 1. Revisar `.env`

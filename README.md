@@ -43,4 +43,5 @@ TypeScript trading bot that:
 - `USE_TEST_ORDERS=true` appends `--test` to CLI bracket submission.
 - Quantity is capped by `MIN_QUANTITY` and `MAX_QUANTITY`.
 - Bot logs are written daily under the local `logs` folder and duplicate-protection state is stored under `state`.
+- Test-mode final outcomes are written to `reports\trade-performance-report.csv`.
 - Trade journaling appends rows into monthly files such as `Trades_Mar2026.csv`.

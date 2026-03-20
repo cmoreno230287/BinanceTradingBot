@@ -87,6 +87,26 @@ export interface RecentOrderRecord {
   entryPrice: number;
 }
 
+export type TradeExecutionMode = 'ANALYSIS' | 'TEST' | 'LIVE';
+export type TradeOutcomeStatus = 'OPEN' | 'TP' | 'SL' | 'CANCELED';
+
+export interface OpenTradeRecord {
+  setupId: string;
+  bracketId: string;
+  strategyId: string;
+  symbol: string;
+  session: SessionName;
+  direction: TradeDirection;
+  entryPrice: number;
+  stopLossPrice: number;
+  takeProfitPrice: number;
+  riskRewardRatio: number;
+  executionMode: TradeExecutionMode;
+  openedAtIso: string;
+  closedAtIso?: string;
+  outcomeStatus: TradeOutcomeStatus;
+}
+
 export interface TradeJournalRecord {
   date: string;
   time: string;
