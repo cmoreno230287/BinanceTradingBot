@@ -3,8 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TradeOutcomeService = void 0;
 class TradeOutcomeService {
     performanceStore;
-    constructor(performanceStore) {
+    tradeJournal;
+    constructor(performanceStore, tradeJournal) {
         this.performanceStore = performanceStore;
+        this.tradeJournal = tradeJournal;
     }
     reconcileOpenTrades(symbol, entryCandles, now) {
         const openTrades = this.performanceStore.getOpenTrades()
@@ -15,12 +17,14 @@ class TradeOutcomeService {
             if (!outcome) {
                 continue;
             }
-            this.performanceStore.closeTrade(trade.setupId, now.toISOString(), outcome);
-            closedTrades.push({
+            const closedTrade = {
                 ...trade,
                 closedAtIso: now.toISOString(),
                 outcomeStatus: outcome
-            });
+            };
+            this.performanceStore.closeTrade(trade.setupId, now.toISOString(), outcome);
+            this.tradeJournal.updateResultForTrade(closedTrade);
+            closedTrades.push(closedTrade);
         }
         return closedTrades;
     }

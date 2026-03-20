@@ -12,12 +12,13 @@ class BotStateStore {
     constructor(stateDirectoryPath) {
         this.stateDirectoryPath = stateDirectoryPath;
     }
-    hasRecentOrder(setupId, cooldownMinutes, now) {
+    hasRecentOrder(setupId, setupFingerprint, cooldownMinutes, now) {
         const state = this.readState();
         const cutoff = now.getTime() - cooldownMinutes * 60_000;
         state.recentOrders = state.recentOrders.filter((record) => new Date(record.createdAtIso).getTime() >= cutoff);
         this.writeState(state);
-        return state.recentOrders.some((record) => record.setupId === setupId);
+        return state.recentOrders.some((record) => record.setupId === setupId ||
+            record.setupFingerprint === setupFingerprint);
     }
     addRecentOrder(record) {
         const state = this.readState();

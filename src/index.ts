@@ -23,11 +23,12 @@ async function main(): Promise<void> {
   const logger = new BotLogger(config.logsDirectoryPath);
   const orderGuardService = new OrderGuardService(stateStore, tradeJournal);
   const tradePerformanceStore = new TradePerformanceStore(config.stateDirectoryPath, config.reportsDirectoryPath);
-  const tradeOutcomeService = new TradeOutcomeService(tradePerformanceStore);
+  const tradeOutcomeService = new TradeOutcomeService(tradePerformanceStore, tradeJournal);
 
   const service = new TradingBotService({
     config,
     marketDataClient,
+    tradePerformanceStore,
     strategyLoader,
     tradeJournal,
     orderExecutor,

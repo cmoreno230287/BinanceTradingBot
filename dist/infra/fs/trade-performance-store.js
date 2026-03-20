@@ -38,6 +38,21 @@ class TradePerformanceStore {
         }
         return JSON.parse(node_fs_1.default.readFileSync(filePath, 'utf8'));
     }
+    getClosedTradesCount() {
+        const filePath = this.getPerformanceReportFilePath();
+        if (!node_fs_1.default.existsSync(filePath)) {
+            return 0;
+        }
+        return node_fs_1.default.readFileSync(filePath, 'utf8')
+            .split(/\r?\n/)
+            .slice(1)
+            .filter((line) => line.trim().length > 0)
+            .filter((line) => {
+            const columns = line.split(',');
+            const outcomeStatus = columns[13];
+            return outcomeStatus === 'TP' || outcomeStatus === 'SL' || outcomeStatus === 'CANCELED';
+        }).length;
+    }
     saveOpenTrades(records) {
         node_fs_1.default.mkdirSync(this.stateDirectoryPath, { recursive: true });
         node_fs_1.default.writeFileSync(this.getOpenTradesFilePath(), JSON.stringify(records, null, 2), 'utf8');
@@ -87,8 +102,8 @@ class TradePerformanceStore {
             record.takeProfitPrice.toFixed(2),
             record.riskRewardRatio.toFixed(2),
             record.executionMode,
-            record.openedAtIso,
-            record.closedAtIso ?? '',
+            formatLocalDateTime(record.openedAtIso),
+            record.closedAtIso ? formatLocalDateTime(record.closedAtIso) : '',
             record.outcomeStatus
         ].join(',');
     }
@@ -100,4 +115,21 @@ class TradePerformanceStore {
     }
 }
 exports.TradePerformanceStore = TradePerformanceStore;
+function formatLocalDateTime(isoTimestamp) {
+    const date = new Date(isoTimestamp);
+    const datePart = new Intl.DateTimeFormat('sv-SE', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'America/Bogota'
+    }).format(date);
+    const timePart = new Intl.DateTimeFormat('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'America/Bogota'
+    }).format(date);
+    return `${datePart} ${timePart}`;
+}
 //# sourceMappingURL=trade-performance-store.js.map

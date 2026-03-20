@@ -36,6 +36,23 @@ export class TradePerformanceStore {
     return JSON.parse(fs.readFileSync(filePath, 'utf8')) as OpenTradeRecord[];
   }
 
+  public getClosedTradesCount(): number {
+    const filePath = this.getPerformanceReportFilePath();
+    if (!fs.existsSync(filePath)) {
+      return 0;
+    }
+
+    return fs.readFileSync(filePath, 'utf8')
+      .split(/\r?\n/)
+      .slice(1)
+      .filter((line) => line.trim().length > 0)
+      .filter((line) => {
+        const columns = line.split(',');
+        const outcomeStatus = columns[13];
+        return outcomeStatus === 'TP' || outcomeStatus === 'SL' || outcomeStatus === 'CANCELED';
+      }).length;
+  }
+
   public saveOpenTrades(records: OpenTradeRecord[]): void {
     fs.mkdirSync(this.stateDirectoryPath, { recursive: true });
     fs.writeFileSync(this.getOpenTradesFilePath(), JSON.stringify(records, null, 2), 'utf8');
@@ -93,8 +110,8 @@ export class TradePerformanceStore {
       record.takeProfitPrice.toFixed(2),
       record.riskRewardRatio.toFixed(2),
       record.executionMode,
-      record.openedAtIso,
-      record.closedAtIso ?? '',
+      formatLocalDateTime(record.openedAtIso),
+      record.closedAtIso ? formatLocalDateTime(record.closedAtIso) : '',
       record.outcomeStatus
     ].join(',');
   }
@@ -106,4 +123,23 @@ export class TradePerformanceStore {
   private getPerformanceReportFilePath(): string {
     return path.join(this.reportsDirectoryPath, PERFORMANCE_REPORT_FILE_NAME);
   }
+}
+
+function formatLocalDateTime(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp);
+  const datePart = new Intl.DateTimeFormat('sv-SE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'America/Bogota'
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'America/Bogota'
+  }).format(date);
+
+  return `${datePart} ${timePart}`;
 }

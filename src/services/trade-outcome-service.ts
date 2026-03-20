@@ -1,8 +1,12 @@
 import { Candle, OpenTradeRecord } from '../core/types';
 import { TradePerformanceStore } from '../infra/fs/trade-performance-store';
+import { TradeJournal } from '../infra/fs/trade-journal';
 
 export class TradeOutcomeService {
-  public constructor(private readonly performanceStore: TradePerformanceStore) {}
+  public constructor(
+    private readonly performanceStore: TradePerformanceStore,
+    private readonly tradeJournal: TradeJournal
+  ) {}
 
   public reconcileOpenTrades(symbol: string, entryCandles: Candle[], now: Date): OpenTradeRecord[] {
     const openTrades = this.performanceStore.getOpenTrades()
@@ -16,12 +20,14 @@ export class TradeOutcomeService {
         continue;
       }
 
-      this.performanceStore.closeTrade(trade.setupId, now.toISOString(), outcome);
-      closedTrades.push({
+      const closedTrade = {
         ...trade,
         closedAtIso: now.toISOString(),
         outcomeStatus: outcome
-      });
+      } satisfies OpenTradeRecord;
+      this.performanceStore.closeTrade(trade.setupId, now.toISOString(), outcome);
+      this.tradeJournal.updateResultForTrade(closedTrade);
+      closedTrades.push(closedTrade);
     }
 
     return closedTrades;

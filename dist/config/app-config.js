@@ -5,9 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadAppConfig = loadAppConfig;
 const node_path_1 = __importDefault(require("node:path"));
+const node_fs_1 = __importDefault(require("node:fs"));
 const env_loader_1 = require("./env-loader");
 function loadAppConfig() {
-    const projectRootPath = node_path_1.default.resolve(__dirname, '..', '..');
+    const projectRootPath = resolveProjectRootPath();
     const envFilePath = node_path_1.default.join(projectRootPath, '.env');
     const env = (0, env_loader_1.loadEnvFile)(envFilePath);
     return {
@@ -32,6 +33,19 @@ function loadAppConfig() {
         useTestOrders: getBoolean(env, 'USE_TEST_ORDERS', true),
         analysisIntervalSeconds: getNumber(env, 'ANALYSIS_INTERVAL_SECONDS', 0)
     };
+}
+function resolveProjectRootPath() {
+    const candidates = [
+        node_path_1.default.resolve(__dirname, '..', '..'),
+        node_path_1.default.resolve(__dirname, '..'),
+        process.cwd()
+    ];
+    for (const candidate of candidates) {
+        if (node_fs_1.default.existsSync(node_path_1.default.join(candidate, '.env')) || node_fs_1.default.existsSync(node_path_1.default.join(candidate, 'strategies'))) {
+            return candidate;
+        }
+    }
+    return node_path_1.default.resolve(__dirname, '..', '..');
 }
 function getString(source, key, fallback) {
     const value = source[key] ?? process.env[key] ?? fallback;

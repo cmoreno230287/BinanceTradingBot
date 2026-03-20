@@ -49,6 +49,42 @@ class TradeJournal {
             .filter((line) => line.trim().length > 0);
         return lines.filter((line) => line.startsWith(`${targetDate},`)).length;
     }
+    updateResultForTrade(record) {
+        const openedAt = new Date(record.openedAtIso);
+        const monthFileName = `Trades_${formatMonthFileToken(openedAt)}.csv`;
+        const filePath = node_path_1.default.join(this.outputDirectoryPath, monthFileName);
+        if (!node_fs_1.default.existsSync(filePath)) {
+            return;
+        }
+        const lines = node_fs_1.default.readFileSync(filePath, 'utf8').split(/\r?\n/);
+        let targetIndex = -1;
+        for (let index = lines.length - 1; index >= 1; index -= 1) {
+            const line = lines[index];
+            if (!line.trim()) {
+                continue;
+            }
+            const columns = parseCsvLine(line);
+            if (columns.length < 12) {
+                continue;
+            }
+            const direction = columns[3];
+            const stopLoss = columns[8];
+            const takeProfit = columns[9];
+            const result = columns[11];
+            if (direction === record.direction &&
+                stopLoss === record.stopLossPrice.toFixed(2) &&
+                takeProfit === record.takeProfitPrice.toFixed(2) &&
+                (result === 'TestValidated' || result === 'Submitted')) {
+                targetIndex = index;
+                columns[11] = record.outcomeStatus;
+                lines[index] = toCsvLine(columns);
+                break;
+            }
+        }
+        if (targetIndex >= 0) {
+            node_fs_1.default.writeFileSync(filePath, lines.join('\n'), 'utf8');
+        }
+    }
 }
 exports.TradeJournal = TradeJournal;
 function formatMonthFileToken(date) {
@@ -64,5 +100,39 @@ function formatMonthFileToken(date) {
 }
 function csv(value) {
     return `"${value.replaceAll('"', '""')}"`;
+}
+function parseCsvLine(line) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    for (let index = 0; index < line.length; index += 1) {
+        const character = line[index];
+        if (character === '"') {
+            if (inQuotes && line[index + 1] === '"') {
+                current += '"';
+                index += 1;
+            }
+            else {
+                inQuotes = !inQuotes;
+            }
+            continue;
+        }
+        if (character === ',' && !inQuotes) {
+            values.push(current);
+            current = '';
+            continue;
+        }
+        current += character;
+    }
+    values.push(current);
+    return values;
+}
+function toCsvLine(columns) {
+    return columns.map((value, index) => {
+        if ([4, 5, 7, 11].includes(index)) {
+            return csv(value);
+        }
+        return value;
+    }).join(',');
 }
 //# sourceMappingURL=trade-journal.js.map

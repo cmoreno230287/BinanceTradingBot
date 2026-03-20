@@ -80,11 +80,13 @@ export interface BotState {
 
 export interface RecentOrderRecord {
   setupId: string;
+  setupFingerprint: string;
   bracketId: string;
   createdAtIso: string;
   symbol: string;
   direction: TradeDirection;
   entryPrice: number;
+  stopLossPrice: number;
 }
 
 export type TradeExecutionMode = 'ANALYSIS' | 'TEST' | 'LIVE';

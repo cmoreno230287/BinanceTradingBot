@@ -17,7 +17,8 @@ class OrderGuardService {
         if (tradesToday >= config.maxTradesPerDay) {
             return `Daily trade limit reached (${tradesToday}/${config.maxTradesPerDay}).`;
         }
-        if (this.stateStore.hasRecentOrder(setup.setupId, config.duplicateOrderCooldownMinutes, now)) {
+        const setupFingerprint = this.buildSetupFingerprint(setup);
+        if (this.stateStore.hasRecentOrder(setup.setupId, setupFingerprint, config.duplicateOrderCooldownMinutes, now)) {
             return `Duplicate setup blocked during ${config.duplicateOrderCooldownMinutes} minute cooldown.`;
         }
         return null;
@@ -31,12 +32,22 @@ class OrderGuardService {
     markOrderSubmitted(setup, bracketId, now) {
         this.stateStore.addRecentOrder({
             setupId: setup.setupId,
+            setupFingerprint: this.buildSetupFingerprint(setup),
             bracketId,
             createdAtIso: now.toISOString(),
             symbol: setup.symbol,
             direction: setup.direction,
-            entryPrice: setup.entryPrice
+            entryPrice: setup.entryPrice,
+            stopLossPrice: setup.stopLossPrice
         });
+    }
+    buildSetupFingerprint(setup) {
+        return [
+            setup.symbol,
+            setup.direction,
+            setup.entryPrice.toFixed(2),
+            setup.stopLossPrice.toFixed(2)
+        ].join('|');
     }
 }
 exports.OrderGuardService = OrderGuardService;

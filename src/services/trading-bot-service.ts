@@ -13,6 +13,7 @@ import { SmcLiquiditySweepStrategy } from '../strategies/smc-liquidity-sweep-str
 interface TradingBotServiceDependencies {
   config: AppConfig;
   marketDataClient: BinanceMarketDataClient;
+  tradePerformanceStore: TradePerformanceStore;
   strategyLoader: StrategyLoader;
   tradeJournal: TradeJournal;
   orderExecutor: BinanceCliOrderExecutor;
@@ -29,6 +30,7 @@ export class TradingBotService {
     const {
       config,
       marketDataClient,
+      tradePerformanceStore,
       strategyLoader,
       tradeJournal,
       orderExecutor,
@@ -61,10 +63,14 @@ export class TradingBotService {
     });
 
     if (!analysis.shouldPlaceOrder || !analysis.setup) {
+      const activeTradesCount = tradePerformanceStore.getOpenTrades().length;
       logger.info('Analysis completed without valid setup.', { strategyId: strategyDefinition.id, reasons: analysis.reasons });
       return {
         botName: config.botName,
         analysis,
+        activeTrade: activeTradesCount > 0,
+        activeTradesCount,
+        closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
         order: {
           executed: false,
           reason: 'No valid setup matched the active strategy.'
@@ -73,10 +79,14 @@ export class TradingBotService {
     }
 
     if (!config.executeOrders) {
+      const activeTradesCount = tradePerformanceStore.getOpenTrades().length;
       logger.info('Execution skipped because live execution is disabled.', { setupId: analysis.setup.setupId });
       return {
         botName: config.botName,
         analysis,
+        activeTrade: activeTradesCount > 0,
+        activeTradesCount,
+        closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
         order: {
           executed: false,
           reason: 'Execution disabled by EXECUTE_ORDERS=false.'
@@ -86,10 +96,14 @@ export class TradingBotService {
 
     const guardReason = orderGuardService.getBlockReason(analysis.setup, config, now);
     if (guardReason) {
+      const activeTradesCount = tradePerformanceStore.getOpenTrades().length;
       logger.info('Execution blocked by guard rules.', { setupId: analysis.setup.setupId, reason: guardReason });
       return {
         botName: config.botName,
         analysis,
+        activeTrade: activeTradesCount > 0,
+        activeTradesCount,
+        closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
         order: {
           executed: false,
           reason: guardReason
@@ -161,9 +175,13 @@ export class TradingBotService {
       useTestOrders: config.useTestOrders
     });
 
+    const activeTradesCount = tradePerformanceStore.getOpenTrades().length;
     return {
       botName: config.botName,
       analysis,
+      activeTrade: activeTradesCount > 0,
+      activeTradesCount,
+      closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
       closedTrades,
       positionSizing,
       bracketId,

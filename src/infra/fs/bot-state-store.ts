@@ -7,14 +7,17 @@ const STATE_FILE_NAME = 'bot-state.json';
 export class BotStateStore {
   public constructor(private readonly stateDirectoryPath: string) {}
 
-  public hasRecentOrder(setupId: string, cooldownMinutes: number, now: Date): boolean {
+  public hasRecentOrder(setupId: string, setupFingerprint: string, cooldownMinutes: number, now: Date): boolean {
     const state = this.readState();
     const cutoff = now.getTime() - cooldownMinutes * 60_000;
 
     state.recentOrders = state.recentOrders.filter((record) => new Date(record.createdAtIso).getTime() >= cutoff);
     this.writeState(state);
 
-    return state.recentOrders.some((record) => record.setupId === setupId);
+    return state.recentOrders.some((record) =>
+      record.setupId === setupId ||
+      record.setupFingerprint === setupFingerprint
+    );
   }
 
   public addRecentOrder(record: RecentOrderRecord): void {

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { loadEnvFile } from './env-loader';
 
 export interface AppConfig {
@@ -25,7 +26,7 @@ export interface AppConfig {
 }
 
 export function loadAppConfig(): AppConfig {
-  const projectRootPath = path.resolve(__dirname, '..', '..');
+  const projectRootPath = resolveProjectRootPath();
   const envFilePath = path.join(projectRootPath, '.env');
   const env = loadEnvFile(envFilePath);
 
@@ -59,6 +60,22 @@ export function loadAppConfig(): AppConfig {
     useTestOrders: getBoolean(env, 'USE_TEST_ORDERS', true),
     analysisIntervalSeconds: getNumber(env, 'ANALYSIS_INTERVAL_SECONDS', 0)
   };
+}
+
+function resolveProjectRootPath(): string {
+  const candidates = [
+    path.resolve(__dirname, '..', '..'),
+    path.resolve(__dirname, '..'),
+    process.cwd()
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, '.env')) || fs.existsSync(path.join(candidate, 'strategies'))) {
+      return candidate;
+    }
+  }
+
+  return path.resolve(__dirname, '..', '..');
 }
 
 function getString(source: Record<string, string>, key: string, fallback?: string): string {

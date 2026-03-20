@@ -24,10 +24,11 @@ async function main() {
     const logger = new bot_logger_1.BotLogger(config.logsDirectoryPath);
     const orderGuardService = new order_guard_service_1.OrderGuardService(stateStore, tradeJournal);
     const tradePerformanceStore = new trade_performance_store_1.TradePerformanceStore(config.stateDirectoryPath, config.reportsDirectoryPath);
-    const tradeOutcomeService = new trade_outcome_service_1.TradeOutcomeService(tradePerformanceStore);
+    const tradeOutcomeService = new trade_outcome_service_1.TradeOutcomeService(tradePerformanceStore, tradeJournal);
     const service = new trading_bot_service_1.TradingBotService({
         config,
         marketDataClient,
+        tradePerformanceStore,
         strategyLoader,
         tradeJournal,
         orderExecutor,
