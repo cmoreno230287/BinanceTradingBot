@@ -25,9 +25,15 @@ export interface StrategyDefinition {
   sweepLookback: number;
   structureLookback: number;
   minimumRiskReward: number;
+  maxRiskReward?: number;
   maxStopLossPercent: number;
   maxEntryDistancePercent: number;
   minimumDisplacementPercent: number;
+  minimumSweepReclaimPercent?: number;
+  minimumChochReclaimPercent?: number;
+  blockedHoursBogota?: number[];
+  allowBos?: boolean;
+  allowChoch?: boolean;
   liquidityTargetLookback: number;
   defaultQuantity: number;
   sessions: SessionName[];

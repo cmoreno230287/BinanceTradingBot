@@ -1,7 +1,7 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
-$sourceRoot = 'C:\Projects\BinanceTradingBot_V2'
-$publishRoot = 'C:\BinanceTradingBot_V2'
+$sourceRoot = 'C:\Projects\BinanceTradingBot'
+$publishRoot = 'C:\BinanceTradingBot'
 $distSource = Join-Path $sourceRoot 'dist'
 $strategiesSource = Join-Path $sourceRoot 'strategies'
 

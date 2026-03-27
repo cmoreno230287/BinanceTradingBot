@@ -9,9 +9,11 @@
   "sweepLookback": 20,
   "structureLookback": 10,
   "minimumRiskReward": 2.5,
+  "maxRiskReward": 4.5,
   "maxStopLossPercent": 0.45,
   "maxEntryDistancePercent": 0.12,
   "minimumDisplacementPercent": 0.12,
+  "minimumSweepReclaimPercent": 0.03,
   "liquidityTargetLookback": 60,
   "defaultQuantity": 0.0001,
   "sessions": ["LONDON", "NEW_YORK"]

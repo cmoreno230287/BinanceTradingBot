@@ -59,7 +59,8 @@ export class TradingBotService {
       contextCandles,
       executionCandles,
       entryCandles,
-      symbol: config.binanceSymbol
+      symbol: config.binanceSymbol,
+      analysisDate: now
     });
 
     if (!analysis.shouldPlaceOrder || !analysis.setup) {
