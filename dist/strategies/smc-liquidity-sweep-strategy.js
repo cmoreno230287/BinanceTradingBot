@@ -3,8 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SmcLiquiditySweepStrategy = void 0;
 class SmcLiquiditySweepStrategy {
     analyze(input) {
-        const session = resolveSession(new Date());
+        const analysisDate = input.analysisDate ?? new Date();
+        const session = resolveSession(analysisDate);
+        const hourBogota = resolveBogotaHour(analysisDate);
         const reasons = [];
+        const minimumSweepReclaimPercent = input.strategy.minimumSweepReclaimPercent ?? 0.02;
+        const minimumChochReclaimPercent = input.strategy.minimumChochReclaimPercent ?? minimumSweepReclaimPercent;
+        const allowBos = input.strategy.allowBos ?? true;
+        const allowChoch = input.strategy.allowChoch ?? true;
+        const blockedHours = input.strategy.blockedHoursBogota ?? [];
+        const maxRiskReward = Math.max(input.strategy.minimumRiskReward, input.strategy.maxRiskReward ?? input.strategy.minimumRiskReward + 2);
+        if (blockedHours.includes(hourBogota)) {
+            reasons.push(`Hour ${hourBogota}:00 (America/Bogota) is blocked by strategy configuration.`);
+            return this.noTrade(input, session, reasons);
+        }
         if (!input.strategy.sessions.includes(session)) {
             reasons.push(`Current session ${session} is outside the strategy whitelist.`);
             return this.noTrade(input, session, reasons);
@@ -20,9 +32,25 @@ class SmcLiquiditySweepStrategy {
             reasons.push('No clear liquidity sweep was detected on the execution timeframe.');
             return this.noTrade(input, session, reasons);
         }
+        if (sweep.reclaimPercent < minimumSweepReclaimPercent) {
+            reasons.push(`Sweep reclaim ${sweep.reclaimPercent.toFixed(3)}% is below minimum ${minimumSweepReclaimPercent.toFixed(3)}%.`);
+            return this.noTrade(input, session, reasons);
+        }
         const confirmation = findStructureConfirmation(input.entryCandles, direction, sweep.candle.closeTime, input.strategy.structureLookback, input.strategy.minimumDisplacementPercent);
         if (!confirmation) {
             reasons.push('No CHOCH/BOS confirmation with displacement was detected after the liquidity sweep.');
+            return this.noTrade(input, session, reasons);
+        }
+        if (confirmation.type === 'BOS' && !allowBos) {
+            reasons.push('BOS confirmations are disabled by strategy configuration.');
+            return this.noTrade(input, session, reasons);
+        }
+        if (confirmation.type === 'CHOCH' && !allowChoch) {
+            reasons.push('CHOCH confirmations are disabled by strategy configuration.');
+            return this.noTrade(input, session, reasons);
+        }
+        if (confirmation.type === 'CHOCH' && sweep.reclaimPercent < minimumChochReclaimPercent) {
+            reasons.push(`CHOCH reclaim ${sweep.reclaimPercent.toFixed(3)}% is below CHOCH minimum ${minimumChochReclaimPercent.toFixed(3)}%.`);
             return this.noTrade(input, session, reasons);
         }
         const fairValueGap = findFairValueGap(input.entryCandles, direction, confirmation.index);
@@ -56,9 +84,15 @@ class SmcLiquiditySweepStrategy {
         const minimumTargetPrice = direction === 'BUY'
             ? entryPrice + risk * input.strategy.minimumRiskReward
             : entryPrice - risk * input.strategy.minimumRiskReward;
-        const takeProfitPrice = direction === 'BUY'
+        const candidateTarget = direction === 'BUY'
             ? Math.max(minimumTargetPrice, liquidityTarget.price)
             : Math.min(minimumTargetPrice, liquidityTarget.price);
+        const maxTargetPrice = direction === 'BUY'
+            ? entryPrice + (risk * maxRiskReward)
+            : entryPrice - (risk * maxRiskReward);
+        const takeProfitPrice = direction === 'BUY'
+            ? Math.min(candidateTarget, maxTargetPrice)
+            : Math.max(candidateTarget, maxTargetPrice);
         const realizedRiskReward = Math.abs(takeProfitPrice - entryPrice) / risk;
         if (realizedRiskReward < input.strategy.minimumRiskReward) {
             reasons.push(`Available liquidity target only offers ${realizedRiskReward.toFixed(2)} R.`);
@@ -126,6 +160,14 @@ function resolveSession(date) {
     }
     return 'OFF_HOURS';
 }
+function resolveBogotaHour(date) {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        hour: '2-digit',
+        hour12: false,
+        timeZone: 'America/Bogota'
+    });
+    return Number(formatter.format(date));
+}
 function resolveBias(candles, structureLookback) {
     const recentCandles = candles.slice(-(structureLookback + 6));
     if (recentCandles.length < structureLookback + 2) {
@@ -156,9 +198,11 @@ function findLiquiditySweep(candles, lookback, direction) {
         if (direction === 'BUY') {
             const priorLow = Math.min(...history.map((candle) => candle.low));
             if (candidate.low < priorLow && candidate.close > priorLow) {
+                const reclaimPercent = ((candidate.close - priorLow) / priorLow) * 100;
                 return {
                     candle: candidate,
                     extremePrice: candidate.low,
+                    reclaimPercent,
                     description: `Sell-side sweep below ${priorLow.toFixed(2)}`
                 };
             }
@@ -166,9 +210,11 @@ function findLiquiditySweep(candles, lookback, direction) {
         }
         const priorHigh = Math.max(...history.map((candle) => candle.high));
         if (candidate.high > priorHigh && candidate.close < priorHigh) {
+            const reclaimPercent = ((priorHigh - candidate.close) / priorHigh) * 100;
             return {
                 candle: candidate,
                 extremePrice: candidate.high,
+                reclaimPercent,
                 description: `Buy-side sweep above ${priorHigh.toFixed(2)}`
             };
         }

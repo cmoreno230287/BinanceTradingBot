@@ -8,6 +8,8 @@
     "build": "npx tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "analyze": "npm run build && npm run start",
+    "backtest": "npm run build && node dist/backtest.js",
+    "backtest:ab": "npm run build && node dist/backtest-ab.js",
     "watch": "npm run build && node dist/index.js"
   },
   "keywords": [

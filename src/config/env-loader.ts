@@ -20,7 +20,7 @@ export function loadEnvFile(filePath: string): Record<string, string> {
       continue;
     }
 
-    const key = trimmedLine.slice(0, separatorIndex).trim();
+    const key = trimmedLine.slice(0, separatorIndex).trim().replace(/^\uFEFF/, '');
     const value = trimmedLine.slice(separatorIndex + 1).trim();
     values[key] = value;
   }

@@ -1,6 +1,6 @@
 {
-  "id": "strategy-1-btc-sweep",
-  "name": "BTCUSDT Liquidity Sweep + CHOCH/BOS + FVG",
+  "id": "strategy-1-btc-sweep-bos-only",
+  "name": "BTCUSDT Liquidity Sweep - BOS Only",
   "symbol": "BTCUSDT",
   "contextInterval": "15m",
   "executionInterval": "5m",
@@ -16,5 +16,7 @@
   "minimumSweepReclaimPercent": 0.02,
   "liquidityTargetLookback": 40,
   "defaultQuantity": 0.0001,
-  "sessions": ["LONDON", "NEW_YORK"]
+  "sessions": ["LONDON", "NEW_YORK"],
+  "allowBos": true,
+  "allowChoch": false
 }

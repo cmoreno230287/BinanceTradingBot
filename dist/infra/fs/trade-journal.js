@@ -7,15 +7,17 @@ exports.TradeJournal = void 0;
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
 const HEADER = 'Fecha,Hora,Sesion,Direccion,Contexto HTF,Nivel de liquidez barrido,Tipo de confirmacion,Zona de entrada,Stop Loss,Take Profit,R:R,Resultado';
+const MAX_ROWS_PER_FILE = 3000;
+const JOURNAL_FILE_PREFIX = 'Trades';
+const JOURNAL_FILE_PATTERN = /^Trades_(\d{4})\.csv$/i;
 class TradeJournal {
     outputDirectoryPath;
     constructor(outputDirectoryPath) {
         this.outputDirectoryPath = outputDirectoryPath;
     }
-    append(record, date) {
+    append(record, _date) {
         node_fs_1.default.mkdirSync(this.outputDirectoryPath, { recursive: true });
-        const monthFileName = `Trades_${formatMonthFileToken(date)}.csv`;
-        const filePath = node_path_1.default.join(this.outputDirectoryPath, monthFileName);
+        const filePath = this.resolveWritableJournalFilePath();
         const row = [
             record.date,
             record.time,
@@ -37,67 +39,110 @@ class TradeJournal {
         node_fs_1.default.appendFileSync(filePath, `${row}\n`, 'utf8');
     }
     countEntriesForDate(date) {
-        const monthFileName = `Trades_${formatMonthFileToken(date)}.csv`;
-        const filePath = node_path_1.default.join(this.outputDirectoryPath, monthFileName);
+        const targetDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Bogota' }).format(date);
+        let count = 0;
+        for (const filePath of this.getJournalFilePaths()) {
+            const lines = node_fs_1.default.readFileSync(filePath, 'utf8')
+                .split(/\r?\n/)
+                .slice(1)
+                .filter((line) => line.trim().length > 0);
+            count += lines.filter((line) => line.startsWith(`${targetDate},`)).length;
+        }
+        return count;
+    }
+    updateResultForTrade(record) {
+        const filePaths = this.getJournalFilePaths().reverse();
+        for (const filePath of filePaths) {
+            const lines = node_fs_1.default.readFileSync(filePath, 'utf8').split(/\r?\n/);
+            let targetIndex = -1;
+            for (let index = lines.length - 1; index >= 1; index -= 1) {
+                const line = lines[index];
+                if (!line.trim()) {
+                    continue;
+                }
+                const columns = parseCsvLine(line);
+                if (columns.length < 12) {
+                    continue;
+                }
+                const direction = columns[3];
+                const stopLoss = columns[8];
+                const takeProfit = columns[9];
+                const result = columns[11];
+                if (direction === record.direction &&
+                    stopLoss === record.stopLossPrice.toFixed(2) &&
+                    takeProfit === record.takeProfitPrice.toFixed(2) &&
+                    (result === 'TestValidated' || result === 'Submitted')) {
+                    targetIndex = index;
+                    columns[11] = record.outcomeStatus;
+                    lines[index] = toCsvLine(columns);
+                    break;
+                }
+            }
+            if (targetIndex >= 0) {
+                node_fs_1.default.writeFileSync(filePath, lines.join('\n'), 'utf8');
+                return;
+            }
+        }
+    }
+    resolveWritableJournalFilePath() {
+        const files = this.getJournalFilePaths();
+        if (files.length === 0) {
+            return node_path_1.default.join(this.outputDirectoryPath, `${JOURNAL_FILE_PREFIX}_0001.csv`);
+        }
+        const latestPath = files[files.length - 1];
+        const rowCount = this.countDataRows(latestPath);
+        if (rowCount < MAX_ROWS_PER_FILE) {
+            return latestPath;
+        }
+        const latestName = node_path_1.default.basename(latestPath);
+        const match = latestName.match(JOURNAL_FILE_PATTERN);
+        const currentIndex = match ? Number(match[1]) : files.length;
+        const nextIndex = currentIndex + 1;
+        const nextName = `${JOURNAL_FILE_PREFIX}_${String(nextIndex).padStart(4, '0')}.csv`;
+        return node_path_1.default.join(this.outputDirectoryPath, nextName);
+    }
+    getJournalFilePaths() {
+        if (!node_fs_1.default.existsSync(this.outputDirectoryPath)) {
+            return [];
+        }
+        const csvFiles = node_fs_1.default.readdirSync(this.outputDirectoryPath)
+            .filter((fileName) => fileName.toLowerCase().endsWith('.csv'))
+            .filter((fileName) => fileName.startsWith(`${JOURNAL_FILE_PREFIX}_`))
+            .map((fileName) => ({
+            fileName,
+            fullPath: node_path_1.default.join(this.outputDirectoryPath, fileName),
+            index: this.extractFileIndex(fileName)
+        }))
+            .sort((a, b) => a.index - b.index)
+            .map((item) => item.fullPath);
+        if (csvFiles.length > 0) {
+            return csvFiles;
+        }
+        // Backward compatibility for legacy monthly naming.
+        return node_fs_1.default.readdirSync(this.outputDirectoryPath)
+            .filter((fileName) => fileName.toLowerCase().endsWith('.csv'))
+            .filter((fileName) => fileName.startsWith(`${JOURNAL_FILE_PREFIX}_`))
+            .sort((a, b) => a.localeCompare(b))
+            .map((fileName) => node_path_1.default.join(this.outputDirectoryPath, fileName));
+    }
+    extractFileIndex(fileName) {
+        const match = fileName.match(JOURNAL_FILE_PATTERN);
+        if (match) {
+            return Number(match[1]);
+        }
+        return Number.MAX_SAFE_INTEGER;
+    }
+    countDataRows(filePath) {
         if (!node_fs_1.default.existsSync(filePath)) {
             return 0;
         }
-        const targetDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Bogota' }).format(date);
-        const lines = node_fs_1.default.readFileSync(filePath, 'utf8')
+        return node_fs_1.default.readFileSync(filePath, 'utf8')
             .split(/\r?\n/)
             .slice(1)
-            .filter((line) => line.trim().length > 0);
-        return lines.filter((line) => line.startsWith(`${targetDate},`)).length;
-    }
-    updateResultForTrade(record) {
-        const openedAt = new Date(record.openedAtIso);
-        const monthFileName = `Trades_${formatMonthFileToken(openedAt)}.csv`;
-        const filePath = node_path_1.default.join(this.outputDirectoryPath, monthFileName);
-        if (!node_fs_1.default.existsSync(filePath)) {
-            return;
-        }
-        const lines = node_fs_1.default.readFileSync(filePath, 'utf8').split(/\r?\n/);
-        let targetIndex = -1;
-        for (let index = lines.length - 1; index >= 1; index -= 1) {
-            const line = lines[index];
-            if (!line.trim()) {
-                continue;
-            }
-            const columns = parseCsvLine(line);
-            if (columns.length < 12) {
-                continue;
-            }
-            const direction = columns[3];
-            const stopLoss = columns[8];
-            const takeProfit = columns[9];
-            const result = columns[11];
-            if (direction === record.direction &&
-                stopLoss === record.stopLossPrice.toFixed(2) &&
-                takeProfit === record.takeProfitPrice.toFixed(2) &&
-                (result === 'TestValidated' || result === 'Submitted')) {
-                targetIndex = index;
-                columns[11] = record.outcomeStatus;
-                lines[index] = toCsvLine(columns);
-                break;
-            }
-        }
-        if (targetIndex >= 0) {
-            node_fs_1.default.writeFileSync(filePath, lines.join('\n'), 'utf8');
-        }
+            .filter((line) => line.trim().length > 0).length;
     }
 }
 exports.TradeJournal = TradeJournal;
-function formatMonthFileToken(date) {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        year: 'numeric',
-        timeZone: 'America/Bogota'
-    });
-    const parts = formatter.formatToParts(date);
-    const month = parts.find((part) => part.type === 'month')?.value ?? 'Jan';
-    const year = parts.find((part) => part.type === 'year')?.value ?? '1970';
-    return `${month}${year}`;
-}
 function csv(value) {
     return `"${value.replaceAll('"', '""')}"`;
 }

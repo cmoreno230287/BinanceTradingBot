@@ -20,7 +20,7 @@ function loadEnvFile(filePath) {
         if (separatorIndex <= 0) {
             continue;
         }
-        const key = trimmedLine.slice(0, separatorIndex).trim();
+        const key = trimmedLine.slice(0, separatorIndex).trim().replace(/^\uFEFF/, '');
         const value = trimmedLine.slice(separatorIndex + 1).trim();
         values[key] = value;
     }
