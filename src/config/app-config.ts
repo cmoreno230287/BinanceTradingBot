@@ -19,6 +19,7 @@ export interface AppConfig {
   minQuantity: number;
   maxQuantity: number;
   maxTradesPerDay: number;
+  maxOrdersActive: number;
   duplicateOrderCooldownMinutes: number;
   executeOrders: boolean;
   useTestOrders: boolean;
@@ -55,6 +56,7 @@ export function loadAppConfig(): AppConfig {
     minQuantity: getNumber(env, 'MIN_QUANTITY', 0.00001),
     maxQuantity: getNumber(env, 'MAX_QUANTITY', 1),
     maxTradesPerDay: getNumber(env, 'MAX_TRADES_PER_DAY', 3),
+    maxOrdersActive: getNumber(env, 'MAX_ORDERS_ACTIVE', 1),
     duplicateOrderCooldownMinutes: getNumber(env, 'DUPLICATE_ORDER_COOLDOWN_MINUTES', 90),
     executeOrders: getBoolean(env, 'EXECUTE_ORDERS', false),
     useTestOrders: getBoolean(env, 'USE_TEST_ORDERS', true),

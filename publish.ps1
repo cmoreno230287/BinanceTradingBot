@@ -30,6 +30,18 @@ foreach ($file in $optionalFiles) {
     }
 }
 
+$legacyArtifacts = @(
+    'backtest-ab.js',
+    'backtest-ab.js.map'
+)
+
+foreach ($legacyFile in $legacyArtifacts) {
+    $targetPath = Join-Path $publishRoot $legacyFile
+    if (Test-Path $targetPath) {
+        Remove-Item -Path $targetPath -Force
+    }
+}
+
 Write-Host "Publish completed to $publishRoot"
 Write-Host 'Contents:'
 Get-ChildItem -Force $publishRoot

@@ -1,47 +1,60 @@
-# Binance Trading Bot V2
+# Binance Trading Bot
 
-TypeScript trading bot that:
-- loads the active strategy from `.env`
-- reads strategy definitions from the `strategies` folder
-- fetches Binance candle data
-- analyzes BTCUSDT using the configured strategy
-- places protected bracket orders through `BinanceIntegration.Cli`
-- sizes quantity from account risk and stop distance
-- can run once or on a repeated analysis interval
-- journals executed trades into monthly CSV files
+TypeScript trading bot for BTCUSDT that analyzes market structure and submits protected bracket orders through `BinanceIntegration.Cli.exe`.
 
-## Execution Guides
-- English: [EXECUTION_GUIDE.md](C:\Projects\BinanceTradingBot_V2\EXECUTION_GUIDE.md)
-- Espanol: [EXECUTION_GUIDE.es.md](C:\Projects\BinanceTradingBot_V2\EXECUTION_GUIDE.es.md)
+## What It Does
+- Loads a strategy from `strategies/*.json` using `STRATEGY_ID`.
+- Fetches Binance candles (context, execution, entry timeframes).
+- Runs SMC liquidity-sweep analysis.
+- Applies risk management and guard rules before execution.
+- Submits bracket orders with the external CLI.
+- Tracks open/closed trades in local state/report files.
 
 ## Requirements
 - Node.js 20+
-- .NET Binance Integration CLI already built at:
-  `C:\Projects\BinanceIntegration\BinanceIntegration.Cli\bin\Release\net8.0\BinanceIntegration.Cli.exe`
+- Built Binance Integration CLI executable (for example):
+  `C:\BinanceIntegration-CLI\BinanceIntegration.Cli.exe`
 
 ## Setup
 1. Copy `.env.example` to `.env`.
-2. Adjust `STRATEGY_ID`, execution flags, account risk values, and CLI path if needed.
+2. Configure `.env` values (`STRATEGY_ID`, CLI path, risk params, limits).
 3. Install dependencies:
    `npm.cmd install`
 4. Build:
    `npm.cmd run build`
-5. Run one analysis cycle:
-   `npm.cmd run start`
+
+## Run Commands
+- Default mode (uses `.env` execution flags):
+  `npm.cmd run start`
+- Force real mode (submits live orders):
+  `npm.cmd run start:real`
+  or `node dist/index.js --real`
+- Force test mode (submits with `--test`):
+  `npm.cmd run start:test`
+  or `node dist/index.js --test`
+- Backtest:
+  `npm.cmd run backtest -- --months 6`
+
+`backtest-ab` is not supported.
 
 ## Key Environment Variables
-- `STRATEGY_ID`: selects the strategy JSON from the `strategies` folder.
-- `EXECUTE_ORDERS`: when `false`, the bot only analyzes and prints the setup result.
-- `USE_TEST_ORDERS`: when `true`, submitted bracket orders include `--test`.
-- `ACCOUNT_BALANCE_USD`: used with `RISK_PERCENT` to size BTC quantity from stop distance.
-- `MAX_TRADES_PER_DAY`: blocks new submissions once the journal already contains that many trades for the day.
-- `DUPLICATE_ORDER_COOLDOWN_MINUTES`: blocks resubmitting the same setup inside the cooldown window.
-- `ANALYSIS_INTERVAL_SECONDS`: `0` runs once; any positive number keeps the bot running in a loop.
+- `STRATEGY_ID`: strategy id to load from `strategies/`.
+- `BINANCE_CLI_PATH`: full path to `BinanceIntegration.Cli.exe`.
+- `EXECUTE_ORDERS`: base execution toggle used when no mode flag is passed.
+- `USE_TEST_ORDERS`: base test/live mode used when no mode flag is passed.
+- `MAX_TRADES_PER_DAY`: max entries allowed per day.
+- `MAX_ORDERS_ACTIVE`: max simultaneous open trades tracked by the bot.
+- `DUPLICATE_ORDER_COOLDOWN_MINUTES`: duplicate setup cooldown.
+- `ANALYSIS_INTERVAL_SECONDS`: `0` for one cycle, `>0` for continuous loop.
+- `ACCOUNT_BALANCE_USD`, `RISK_PERCENT`, `MIN_QUANTITY`, `MAX_QUANTITY`: position sizing inputs.
 
-## Notes
-- `EXECUTE_ORDERS=false` keeps the bot in analysis-only mode.
-- `USE_TEST_ORDERS=true` appends `--test` to CLI bracket submission.
-- Quantity is capped by `MIN_QUANTITY` and `MAX_QUANTITY`.
-- Bot logs are written daily under the local `logs` folder and duplicate-protection state is stored under `state`.
-- Test-mode final outcomes are written to `reports\trade-performance-report.csv`.
-- Trade journaling appends rows into monthly files such as `Trades_Mar2026.csv`.
+## Behavior Notes
+- The bot stops if the first submitted trade in the current process closes as `TP`.
+- Open-trade tracking applies to both test and real execution modes.
+- Logs are written to `logs\YYYYMMDD.log`.
+- Trade lifecycle report is written to `reports\trade-performance-report.csv`.
+
+## Additional Docs
+- [TECHNICAL_WIKI.md](./TECHNICAL_WIKI.md)
+- [EXECUTION_GUIDE.md](./EXECUTION_GUIDE.md)
+- [EXECUTION_GUIDE.es.md](./EXECUTION_GUIDE.es.md)

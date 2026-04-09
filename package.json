@@ -7,10 +7,12 @@
   "scripts": {
     "build": "npx tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "start:real": "node dist/index.js --real",
+    "start:test": "node dist/index.js --test",
     "analyze": "npm run build && npm run start",
     "backtest": "npm run build && node dist/backtest.js",
     "watch": "npm run build && node dist/index.js",
-	  "publish": "npm run build && powershell -ExecutionPolicy Bypass -File publish.ps1"
+    "publish": "npm run build && powershell -ExecutionPolicy Bypass -File publish.ps1"
   },
   "keywords": [
     "binance",
