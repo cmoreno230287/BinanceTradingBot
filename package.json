@@ -9,8 +9,8 @@
     "start": "node dist/index.js",
     "analyze": "npm run build && npm run start",
     "backtest": "npm run build && node dist/backtest.js",
-    "backtest:ab": "npm run build && node dist/backtest-ab.js",
-    "watch": "npm run build && node dist/index.js"
+    "watch": "npm run build && node dist/index.js",
+	  "publish": "npm run build && powershell -ExecutionPolicy Bypass -File publish.ps1"
   },
   "keywords": [
     "binance",
