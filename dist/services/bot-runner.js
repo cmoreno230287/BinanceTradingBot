@@ -11,6 +11,7 @@ class BotRunner {
         this.logger = logger;
     }
     async run() {
+        let firstSubmittedTradeSetupId = null;
         if (this.analysisIntervalSeconds <= 0) {
             const summary = await this.tradingBotService.runOnce();
             clearConsole();
@@ -21,9 +22,18 @@ class BotRunner {
             const startedAt = new Date().toISOString();
             try {
                 const summary = await this.tradingBotService.runOnce();
+                if (!firstSubmittedTradeSetupId && typeof summary.submittedTradeSetupId === 'string') {
+                    firstSubmittedTradeSetupId = summary.submittedTradeSetupId;
+                }
                 this.logger?.info('Trading cycle completed.', summary);
                 clearConsole();
                 console.log(formatConsoleSummary({ startedAt, ...summary }));
+                if (shouldStopAfterFirstTradeWinner(summary, firstSubmittedTradeSetupId)) {
+                    this.logger?.info('Bot runner stopped because first submitted trade closed as winner.', {
+                        firstSubmittedTradeSetupId
+                    });
+                    break;
+                }
             }
             catch (error) {
                 const message = error instanceof Error ? error.stack ?? error.message : String(error);
@@ -78,5 +88,14 @@ function delay(milliseconds) {
     return new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
     });
+}
+function shouldStopAfterFirstTradeWinner(summary, firstSetupId) {
+    if (!firstSetupId) {
+        return false;
+    }
+    const closedTrades = Array.isArray(summary.closedTrades) ? summary.closedTrades : [];
+    return closedTrades.some((trade) => isRecord(trade) &&
+        trade.setupId === firstSetupId &&
+        trade.outcomeStatus === 'TP');
 }
 //# sourceMappingURL=bot-runner.js.map

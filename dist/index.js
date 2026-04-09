@@ -15,6 +15,11 @@ const trade_outcome_service_1 = require("./services/trade-outcome-service");
 const trading_bot_service_1 = require("./services/trading-bot-service");
 async function main() {
     const config = (0, app_config_1.loadAppConfig)();
+    const runMode = parseRunMode(process.argv.slice(2));
+    if (runMode) {
+        config.executeOrders = true;
+        config.useTestOrders = runMode === 'test';
+    }
     const marketDataClient = new binance_market_data_client_1.BinanceMarketDataClient(config.binanceBaseUrl);
     const strategyLoader = new strategy_loader_1.StrategyLoader(config.strategiesDirectoryPath);
     const tradeJournal = new trade_journal_1.TradeJournal(config.tradeJournalDirectoryPath);
@@ -39,6 +44,20 @@ async function main() {
     });
     const runner = new bot_runner_1.BotRunner(service, config.analysisIntervalSeconds, logger);
     await runner.run();
+}
+function parseRunMode(args) {
+    const hasReal = args.includes('--real');
+    const hasTest = args.includes('--test');
+    if (hasReal && hasTest) {
+        throw new Error('Use only one run mode: --real or --test.');
+    }
+    if (hasReal) {
+        return 'real';
+    }
+    if (hasTest) {
+        return 'test';
+    }
+    return null;
 }
 main().catch((error) => {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);

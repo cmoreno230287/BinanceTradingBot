@@ -14,6 +14,12 @@ import { TradingBotService } from './services/trading-bot-service';
 
 async function main(): Promise<void> {
   const config = loadAppConfig();
+  const runMode = parseRunMode(process.argv.slice(2));
+  if (runMode) {
+    config.executeOrders = true;
+    config.useTestOrders = runMode === 'test';
+  }
+
   const marketDataClient = new BinanceMarketDataClient(config.binanceBaseUrl);
   const strategyLoader = new StrategyLoader(config.strategiesDirectoryPath);
   const tradeJournal = new TradeJournal(config.tradeJournalDirectoryPath);
@@ -39,6 +45,25 @@ async function main(): Promise<void> {
   });
   const runner = new BotRunner(service, config.analysisIntervalSeconds, logger);
   await runner.run();
+}
+
+function parseRunMode(args: string[]): 'real' | 'test' | null {
+  const hasReal = args.includes('--real');
+  const hasTest = args.includes('--test');
+
+  if (hasReal && hasTest) {
+    throw new Error('Use only one run mode: --real or --test.');
+  }
+
+  if (hasReal) {
+    return 'real';
+  }
+
+  if (hasTest) {
+    return 'test';
+  }
+
+  return null;
 }
 
 main().catch((error: unknown) => {

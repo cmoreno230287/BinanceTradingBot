@@ -51,7 +51,7 @@ export class TradingBotService {
     const strategy = new SmcLiquiditySweepStrategy();
     const closedTrades = tradeOutcomeService.reconcileOpenTrades(config.binanceSymbol, entryCandles, now);
     if (closedTrades.length > 0) {
-      logger.info('Open test trades reconciled to final outcomes.', closedTrades);
+      logger.info('Open trades reconciled to final outcomes.', closedTrades);
     }
 
     const analysis = strategy.analyze({
@@ -72,6 +72,7 @@ export class TradingBotService {
         activeTrade: activeTradesCount > 0,
         activeTradesCount,
         closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
+        closedTrades,
         order: {
           executed: false,
           reason: 'No valid setup matched the active strategy.'
@@ -88,9 +89,31 @@ export class TradingBotService {
         activeTrade: activeTradesCount > 0,
         activeTradesCount,
         closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
+        closedTrades,
         order: {
           executed: false,
           reason: 'Execution disabled by EXECUTE_ORDERS=false.'
+        }
+      };
+    }
+
+    const activeTradesCountBeforeOrder = tradePerformanceStore.getOpenTrades().length;
+    if (activeTradesCountBeforeOrder >= config.maxOrdersActive) {
+      logger.info('Execution blocked by max active orders rule.', {
+        setupId: analysis.setup.setupId,
+        maxOrdersActive: config.maxOrdersActive,
+        activeTradesCount: activeTradesCountBeforeOrder
+      });
+      return {
+        botName: config.botName,
+        analysis,
+        activeTrade: activeTradesCountBeforeOrder > 0,
+        activeTradesCount: activeTradesCountBeforeOrder,
+        closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
+        closedTrades,
+        order: {
+          executed: false,
+          reason: `Max active orders reached (${activeTradesCountBeforeOrder}/${config.maxOrdersActive}).`
         }
       };
     }
@@ -105,6 +128,7 @@ export class TradingBotService {
         activeTrade: activeTradesCount > 0,
         activeTradesCount,
         closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
+        closedTrades,
         order: {
           executed: false,
           reason: guardReason
@@ -150,23 +174,21 @@ export class TradingBotService {
       result: config.useTestOrders ? 'TestValidated' : 'Submitted'
     }, now);
 
-    if (config.useTestOrders) {
-      tradeOutcomeService.registerOpenTrade({
-        setupId: analysis.setup.setupId,
-        bracketId,
-        strategyId: strategyDefinition.id,
-        symbol: analysis.setup.symbol,
-        session: analysis.session,
-        direction: analysis.setup.direction,
-        entryPrice: analysis.setup.entryPrice,
-        stopLossPrice: analysis.setup.stopLossPrice,
-        takeProfitPrice: analysis.setup.takeProfitPrice,
-        riskRewardRatio: analysis.setup.riskRewardRatio,
-        executionMode: 'TEST',
-        openedAtIso: now.toISOString(),
-        outcomeStatus: 'OPEN'
-      });
-    }
+    tradeOutcomeService.registerOpenTrade({
+      setupId: analysis.setup.setupId,
+      bracketId,
+      strategyId: strategyDefinition.id,
+      symbol: analysis.setup.symbol,
+      session: analysis.session,
+      direction: analysis.setup.direction,
+      entryPrice: analysis.setup.entryPrice,
+      stopLossPrice: analysis.setup.stopLossPrice,
+      takeProfitPrice: analysis.setup.takeProfitPrice,
+      riskRewardRatio: analysis.setup.riskRewardRatio,
+      executionMode: config.useTestOrders ? 'TEST' : 'LIVE',
+      openedAtIso: now.toISOString(),
+      outcomeStatus: 'OPEN'
+    });
 
     orderGuardService.markOrderSubmitted(analysis.setup, bracketId, now);
     logger.info('Order submitted through Binance CLI.', {
@@ -184,6 +206,7 @@ export class TradingBotService {
       activeTradesCount,
       closedTradesCount: tradePerformanceStore.getClosedTradesCount(),
       closedTrades,
+      submittedTradeSetupId: analysis.setup.setupId,
       positionSizing,
       bracketId,
       order: executionResult

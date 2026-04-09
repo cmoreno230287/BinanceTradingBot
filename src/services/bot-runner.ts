@@ -9,6 +9,8 @@ export class BotRunner {
   ) {}
 
   public async run(): Promise<void> {
+    let firstSubmittedTradeSetupId: string | null = null;
+
     if (this.analysisIntervalSeconds <= 0) {
       const summary = await this.tradingBotService.runOnce();
       clearConsole();
@@ -21,9 +23,20 @@ export class BotRunner {
 
       try {
         const summary = await this.tradingBotService.runOnce();
+        if (!firstSubmittedTradeSetupId && typeof summary.submittedTradeSetupId === 'string') {
+          firstSubmittedTradeSetupId = summary.submittedTradeSetupId;
+        }
+
         this.logger?.info('Trading cycle completed.', summary);
         clearConsole();
         console.log(formatConsoleSummary({ startedAt, ...summary }));
+
+        if (shouldStopAfterFirstTradeWinner(summary, firstSubmittedTradeSetupId)) {
+          this.logger?.info('Bot runner stopped because first submitted trade closed as winner.', {
+            firstSubmittedTradeSetupId
+          });
+          break;
+        }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.stack ?? error.message : String(error);
         this.logger?.error('Trading cycle failed.', { error: message });
@@ -88,4 +101,18 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
+}
+
+function shouldStopAfterFirstTradeWinner(summary: Record<string, unknown>, firstSetupId: string | null): boolean {
+  if (!firstSetupId) {
+    return false;
+  }
+
+  const closedTrades = Array.isArray(summary.closedTrades) ? summary.closedTrades : [];
+
+  return closedTrades.some((trade) =>
+    isRecord(trade) &&
+    trade.setupId === firstSetupId &&
+    trade.outcomeStatus === 'TP'
+  );
 }
